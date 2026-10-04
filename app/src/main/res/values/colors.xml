@@ -5,4 +5,9 @@
     <color name="darkgreen">#0D4004</color>
     <color name="lightgreen">#47ED2B</color>
     <color name="whitegreen">#94FF87</color>
+    <color name="app_background">#F2FFF0</color>
+    <color name="text_secondary">#4F5D4C</color>
+    <color name="warning_amber">#8A5300</color>
+    <color name="primary_green">@color/darkgreen</color>
+    <color name="text_primary">@color/darkgreen</color>
 </resources>
