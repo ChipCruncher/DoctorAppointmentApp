@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         updateConfirmButton();
 
         btnDate.setOnClickListener(v -> showDatePicker());
-        btnConfirm.setOnClickListener(v -> confirmBooking());    // NEW
+        btnConfirm.setOnClickListener(v -> saveBooking());    // NEW
 
         spHospital.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -180,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
 
     // ---------- NEW: save the booking ----------
 
-    private void confirmBooking() {
+    private void saveBooking() {
         String doctorName = spDoctor.getSelectedItem().toString();
         String time = spTime.getSelectedItem().toString();
         String[] info = db.getDoctorInfo(doctorName);
