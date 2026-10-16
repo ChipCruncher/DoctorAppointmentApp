@@ -1,6 +1,7 @@
 package com.example.doctorappointmentapp;
 
 import android.app.DatePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -126,6 +127,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) { }
         });
+
+        findViewById(R.id.btnMyAppointments).setOnClickListener(v ->
+                startActivity(new Intent(this, MyAppointmentsActivity.class)));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshTimes();
+        updateConfirmButton();
     }
 
     // ---------- Date picker ----------

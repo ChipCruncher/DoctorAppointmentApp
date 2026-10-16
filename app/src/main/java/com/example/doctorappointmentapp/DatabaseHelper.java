@@ -5,11 +5,13 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
 
 // AI-assisted (Claude). Pattern from developer.android.com SQLiteOpenHelper guide.
+// Initial SQLite database schema is written by the student.
 // getSpecializations and bookAppointment are written by the student.
 public class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -28,7 +30,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // TEMPORARY stand-in for Maghelesh's table. Delete when his is merged in.
+        // Database schema and some queries created by c'est moi Oleen :>
         db.execSQL("CREATE TABLE users (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "full_name TEXT NOT NULL, " +
@@ -36,7 +38,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "phone TEXT NOT NULL, " +
                 "password_hash TEXT NOT NULL)");
 
-        // ---- Akeno's tables ----
         db.execSQL("CREATE TABLE hospitals (" +
                 "hospital_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "name TEXT NOT NULL, " +
@@ -68,9 +69,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "ON appointments(doctor_id, appointment_date, appointment_time) " +
                 "WHERE status = 'BOOKED'");
 
-        // ---- Orshahn's tables go here (saved_cards, payments, and their two indexes) ----
-
-        // ---- Starter data (extend it as you like) ----
         db.execSQL("INSERT INTO users (full_name, email, phone, password_hash) " +
                 "VALUES ('Nimal Perera', 'test@mail.com', '0771234567', 'x')");
 
@@ -88,7 +86,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "(3, 'Dr. Sanjeewa Wickrama', 'Cardiology', 3000, 'M', 'English, Sinhala', '08:00', '12:00'), " +
                 "(3, 'Dr. Dilini Mendis', 'Pediatrics', 2000, 'F', 'English, Sinhala', '09:00', '13:00')");
 
-        // Test bookings so getBookedTimes has something to find
         db.execSQL("INSERT INTO appointments (user_id, doctor_id, appointment_date, " +
                 "appointment_time, fee, status) VALUES " +
                 "(1, 1, '2026-10-10', '09:30', 2500, 'BOOKED'), " +
@@ -157,21 +154,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[]{doctorName, date});
         while (c.moveToNext()) list.add(c.getString(0));
         c.close();
+        Log.d("DB", "getBookedTimes " + doctorName + " " + date + " -> " + list);
         return list;
     }
 
     public void cancelAppointment(int id) {
-        getWritableDatabase().execSQL(
-                "UPDATE appointments SET status = 'CANCELLED' WHERE appointment_id = ?",
-                new Object[]{id});
+        ContentValues values = new ContentValues();
+        values.put("status", "CANCELLED");
+        int rows = getWritableDatabase().update("appointments", values,
+                "appointment_id = ?", new String[]{String.valueOf(id)});
+        Log.d("DB", "cancelAppointment " + id + " -> rows affected: " + rows);
     }
 
     public void markAsPaid(int id) {
-        getWritableDatabase().execSQL(
-                "UPDATE appointments SET payment_status = 'PAID' WHERE appointment_id = ?",
-                new Object[]{id});
+        ContentValues values = new ContentValues();
+        values.put("payment_status", "PAID");
+        int rows = getWritableDatabase().update("appointments", values,
+                "appointment_id = ?", new String[]{String.valueOf(id)});
+        Log.d("DB", "markAsPaid " + id + " -> rows affected: " + rows);
     }
 
+    // Oleen's queries down below :)
     public List<String> getSpecializations(String hospitalName) {
         List<String> list = new ArrayList<>();
         Cursor c = getReadableDatabase().rawQuery(
@@ -192,6 +195,56 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("appointment_date", date);
         values.put("appointment_time", time);
         values.put("fee", fee);
-        return getWritableDatabase().insert("appointments", null, values);
+
+        long id = getWritableDatabase().insert("appointments", null, values);
+        Log.d("DB", "bookAppointment user=" + userId + " doctor=" + doctorId
+                + " " + date + " " + time + " -> " + id);   // -1 means the unique index refused it
+        return id;
+    }
+
+    // AI-assisted skeleton (Claude). The SELECT is written by the student.
+    public List<Appointment> getAppointmentsForUser(int userId) {
+        List<Appointment> list = new ArrayList<>();
+        String sql = "SELECT a.appointment_id, h.name AS hospital, d.name AS doctor, "
+                + "a.appointment_date, a.appointment_time, a.status "
+                + "FROM appointments a "
+                + "JOIN doctors d ON a.doctor_id = d.doctor_id "
+                + "JOIN hospitals h ON d.hospital_id = h.hospital_id "
+                + "WHERE a.user_id = ? "
+                + "ORDER BY a.appointment_date, a.appointment_time";
+        if (sql.isEmpty()) return list;
+
+        Cursor c = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(userId)});
+        while (c.moveToNext()) {
+            list.add(new Appointment(c.getInt(0), c.getString(1), c.getString(2),
+                    c.getString(3), c.getString(4), c.getString(5)));
+        }
+        c.close();
+        return list;
+    }
+
+    // AI-assisted (Claude). Debug helper: prints a whole table to Logcat, one row per line
+    // using logcat was my idea here, since it's a good testing tool I heard. [oleen]
+    public void dumpTable(String table) {
+        // Table names can't use "?" placeholders. This is safe because the name comes
+        // from my own code, never from user input; values always use "?".
+        Cursor c = getReadableDatabase().rawQuery("SELECT * FROM " + table, null);
+        Log.d("DB", "---- " + table + " (" + c.getCount() + " rows) ----");
+        String[] cols = c.getColumnNames();
+        while (c.moveToNext()) {
+            StringBuilder row = new StringBuilder();
+            for (int i = 0; i < cols.length; i++) {
+                row.append(cols[i]).append("=").append(c.getString(i));
+                if (i < cols.length - 1) row.append(" | ");
+            }
+            Log.d("DB", row.toString());
+        }
+        c.close();
+    }
+
+    public void dumpAll() {
+        dumpTable("hospitals");
+        dumpTable("doctors");
+        dumpTable("appointments");
     }
 }
