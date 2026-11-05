@@ -3,6 +3,7 @@ package com.example.doctorappointmentapp;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -12,18 +13,30 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 // AI-assisted (Claude). Spinner cascade pattern from developer.android.com Spinners guide;
 // DatePickerDialog pattern from developer.android.com
@@ -70,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         updateConfirmButton();
 
         btnDate.setOnClickListener(v -> showDatePicker());
-        btnConfirm.setOnClickListener(v -> saveBooking());    // NEW
+        btnConfirm.setOnClickListener(v -> showConfirmDialog());    // NEW
 
         spHospital.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -161,6 +174,17 @@ public class MainActivity extends AppCompatActivity {
     // ---------- What the time dropdown shows ----------
 
     private void refreshTimes() {
+        // AI-assisted skeleton (Claude)
+        TextView tvHoliday = findViewById(R.id.tvHolidayMessage);
+        String holidayName = (selectedDate == null) ? null : holidays.get(selectedDate);
+        if (holidayName != null) {
+            tvHoliday.setText("Closed on " + selectedDate + " for " + holidayName + ". Please choose another date." );
+            tvHoliday.setVisibility(View.VISIBLE);
+            resetSpinner(spTime, "Closed");
+            return;                          // stops here: no slots, no SQL
+        }
+        tvHoliday.setVisibility(View.GONE);
+
         boolean doctorChosen = spDoctor.isEnabled() && spDoctor.getSelectedItemPosition() > 0;
         if (!doctorChosen || selectedDate == null) {
             resetSpinner(spTime, "Select time");
@@ -189,7 +213,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // ---------- NEW: save the booking ----------
+    // AI-assisted skeleton (Claude); pattern from Lab Worksheet 9 (Volley, JsonObjectRequest)
+    private final Map<String, String> holidays = new HashMap<>();   // "2026-12-25" -> "Christmas Day"
+
+    private void loadHolidays() {
+        final String API_KEY = "TAvaBDVMTnOsed8XwUff0GNj4Qc7XFYC";
+        String url = "https://calendarific.com/api/v2/holidays?api_key=" + API_KEY
+                + "&country=LK&year=" + LocalDate.now().getYear();
+        RequestQueue queue = Volley.newRequestQueue(this);
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        JSONArray list = response.getJSONObject("response")
+                                .getJSONArray("holidays");
+                        for (int i = 0; i < list.length(); i++) {          // go through each item by position
+                            JSONObject holiday = list.getJSONObject(i);          // item i is an object
+                            String name = holiday.getString("name");                 // a plain field
+                            String date = holiday.getJSONObject("date").getString("iso");   // a field inside a nested object
+                            holidays.put(date, name);                          // store it in the Map
+                        }
+                        Log.d("API", "Loaded " + holidays.size() + " holidays");
+                    } catch (JSONException e) {
+                        Log.d("API", "Could not read holidays: " + e.getMessage());
+                    }
+                },
+                error -> Log.d("API", "Holiday request failed: " + error)   // booking still works
+        );
+        queue.add(request);
+    }
 
     private void saveBooking() {
         String doctorName = spDoctor.getSelectedItem().toString();
@@ -216,6 +267,19 @@ public class MainActivity extends AppCompatActivity {
         updateConfirmButton();
     }
 
+    private void showConfirmDialog() {
+        String doctor = spDoctor.getSelectedItem().toString();
+        String time = spTime.getSelectedItem().toString();
+
+        new AlertDialog.Builder(this)
+                .setMessage("Book " + doctor + " on " + selectedDate + " at " + time + "?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    saveBooking();
+                })
+                .setNegativeButton("No", null)
+                .show();
+    }
+
     // ---------- Confirm is only enabled when everything is chosen ----------
 
     private void updateConfirmButton() {
@@ -223,6 +287,7 @@ public class MainActivity extends AppCompatActivity {
                 && spSpecialization.isEnabled() && spSpecialization.getSelectedItemPosition() > 0
                 && spDoctor.isEnabled() && spDoctor.getSelectedItemPosition() > 0
                 && selectedDate != null
+                && !holidays.containsKey(selectedDate)
                 && spTime.isEnabled() && spTime.getSelectedItemPosition() > 0;
         btnConfirm.setEnabled(ready);
         btnConfirm.setAlpha(ready ? 1f : 0.5f);

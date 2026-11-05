@@ -33,6 +33,7 @@ android {
 
 dependencies {
     implementation(libs.activity.ktx)
+    implementation("com.android.volley:volley:1.2.1")
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)
