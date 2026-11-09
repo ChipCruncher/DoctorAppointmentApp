@@ -61,7 +61,8 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        db = new DatabaseHelper(this);           // NEW
+        db = new DatabaseHelper(this);
+        loadHolidays();
 
         spHospital = findViewById(R.id.spHospital);
         spSpecialization = findViewById(R.id.spSpecialization);
@@ -227,17 +228,26 @@ public class MainActivity extends AppCompatActivity {
                         JSONArray list = response.getJSONObject("response")
                                 .getJSONArray("holidays");
                         for (int i = 0; i < list.length(); i++) {          // go through each item by position
-                            JSONObject holiday = list.getJSONObject(i);          // item i is an object
+                            JSONObject holiday = list.getJSONObject(i);          // item I is an object
                             String name = holiday.getString("name");                 // a plain field
-                            String date = holiday.getJSONObject("date").getString("iso");   // a field inside a nested object
+                            String date = holiday.getJSONObject("date").getString("iso"); // a field inside a nested object
+                            if (date.length() > 10) {
+                                date = date.substring(0, 10);
+                            }
                             holidays.put(date, name);                          // store it in the Map
                         }
-                        Log.d("API", "Loaded " + holidays.size() + " holidays");
+                        Toast.makeText(this, "Holidays loaded: " + holidays.size(), Toast.LENGTH_LONG).show();   // temporary debug
+                        refreshTimes();
+                        updateConfirmButton();
                     } catch (JSONException e) {
-                        Log.d("API", "Could not read holidays: " + e.getMessage());
+                        Toast.makeText(this, "Holiday data could not be read", Toast.LENGTH_LONG).show();
+
                     }
                 },
-                error -> Log.d("API", "Holiday request failed: " + error)   // booking still works
+                error -> {
+                    Log.d("API", "Holiday request failed: " + error);
+                    Toast.makeText(this, "Holiday check unavailable (no data loaded)", Toast.LENGTH_LONG).show();
+                }  // booking still works
         );
         queue.add(request);
     }
