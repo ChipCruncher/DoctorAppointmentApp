@@ -65,8 +65,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "ON appointments(doctor_id, appointment_date, appointment_time) " +
                 "WHERE status = 'BOOKED'");
 
-        db.execSQL("INSERT INTO users (full_name, email, phone, password_hash) " +
-                "VALUES ('Nimal Perera', 'test@mail.com', '0771234567', 'x')");
+        db.execSQL("INSERT INTO users (name, email, phone, password, dob, gender, emergency_contact) " +
+                "VALUES ('Nimal Perera', 'test@mail.com', '0771234567', 'x', '1995-01-01', 'Male', '0770000000')");
 
         db.execSQL("INSERT INTO hospitals (name, address) VALUES " +
                 "('City General Hospital', '12 Main Street, Colombo'), " +
