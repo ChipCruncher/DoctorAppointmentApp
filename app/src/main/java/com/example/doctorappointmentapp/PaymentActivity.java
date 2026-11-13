@@ -151,14 +151,22 @@ public class PaymentActivity extends AppCompatActivity {
     private void savePayment(boolean isCard, String number, boolean success) {
         Payment p = new Payment();
         p.doctorName = doctorName;
-        p.appointmentDate = appointmentDate;
+        p.appointmentDate = appointmentDate; // e.g. "2026-11-20 at 10:00"
         p.amount = fee;
         p.method = isCard ? "CARD" : "CASH";
-        // Security: store ONLY the last 4 digits. Never store the full number or CVV.
         p.last4 = isCard ? number.substring(number.length() - 4) : "-";
         p.status = success ? "SUCCESS" : "FAILED";
         p.paidAt = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(new Date());
-        db.insertPayment(p);
+
+        // Assume you pass user_id or email via Intent, or fetch it.
+        // Here we call your new helper method:
+        int userId = getIntent().getIntExtra("user_id", 1);
+
+        if (success) {
+            db.completePaymentAndMarkPaid(p, userId);
+        } else {
+            db.insertPayment(p); // Just record failed payment history
+        }
     }
 
     private void showResult(boolean success) {

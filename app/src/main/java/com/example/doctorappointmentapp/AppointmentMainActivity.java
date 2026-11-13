@@ -252,14 +252,21 @@ public class AppointmentMainActivity extends AppCompatActivity {
         queue.add(request);
     }
 
+    private int getCurrentUserId() {
+        String userEmail = getIntent().getStringExtra("email");
+        if (userEmail == null) userEmail = "test@mail.com"; // fallback for testing
+        return db.getUserIdByEmail(userEmail);
+    }
+
     private void saveBooking() {
+
         String doctorName = spDoctor.getSelectedItem().toString();
         String time = spTime.getSelectedItem().toString();
         String[] info = db.getDoctorInfo(doctorName);
         if (info == null) return;
 
         long result = db.bookAppointment(
-                TEMP_USER_ID,
+                getCurrentUserId(),
                 Integer.parseInt(info[0]),       // doctor_id
                 selectedDate,
                 time,
@@ -273,8 +280,17 @@ public class AppointmentMainActivity extends AppCompatActivity {
             Toast.makeText(this, "Appointment booked for " + selectedDate + " at " + time,
                     Toast.LENGTH_LONG).show();
         }
+
         refreshTimes();             // reload free times (the booked one disappears)
         updateConfirmButton();
+
+        // Launch PaymentActivity and pass booking data
+        Intent intent = new Intent(this, PaymentActivity.class);
+        intent.putExtra("doctor_name", doctorName);
+        intent.putExtra("appointment_date", selectedDate + " at " + time);
+        intent.putExtra("fee", (double) Integer.parseInt(info[1]));
+        startActivity(intent);
+        finish();
     }
 
     private void showConfirmDialog() {

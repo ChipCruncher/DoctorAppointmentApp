@@ -16,7 +16,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "clinic.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
 
     public static final String TABLE_USERS = "users";
 
@@ -33,12 +33,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         // Database schema and some queries created by c'est moi Oleen :>
-        db.execSQL("CREATE TABLE users (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "full_name TEXT NOT NULL, " +
-                "email TEXT NOT NULL UNIQUE, " +
-                "phone TEXT NOT NULL, " +
-                "password_hash TEXT NOT NULL)");
 
         db.execSQL("CREATE TABLE hospitals (" +
                 "hospital_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -139,7 +133,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS appointments");
         db.execSQL("DROP TABLE IF EXISTS doctors");
         db.execSQL("DROP TABLE IF EXISTS hospitals");
-        db.execSQL("DROP TABLE IF EXISTS users");
         db.execSQL("DROP TABLE IF EXISTS payments");
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
         onCreate(db);
@@ -323,6 +316,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         );
     }
 
+    public int getUserIdByEmail(String email) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT id FROM users WHERE email = ?", new String[]{safeTrim(email)});
+        int id = 1; // fallback to test user if not found
+        if (cursor.moveToFirst()) {
+            id = cursor.getInt(0);
+        }
+        cursor.close();
+        return id;
+    }
+
     public boolean emailExists(String email) {
         Cursor cursor = getUser(email);
         boolean exists = cursor.moveToFirst();
@@ -405,5 +409,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         c.close();
         return list;
+    }
+
+    public void completePaymentAndMarkPaid(Payment p, int userId) {
+        // 1. Insert into Orshahn's payments table
+        insertPayment(p);
+
+        // 2. Update the appointment's payment status to PAID
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("payment_status", "PAID");
+
+        db.update("appointments", values,
+                "user_id = ? AND appointment_date = ? AND doctor_id IN (SELECT doctor_id FROM doctors WHERE name = ?)",
+                new String[]{String.valueOf(userId), p.appointmentDate.substring(0, 10), p.doctorName});
     }
 }

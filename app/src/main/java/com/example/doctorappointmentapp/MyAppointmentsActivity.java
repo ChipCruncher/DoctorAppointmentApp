@@ -37,8 +37,14 @@ public class MyAppointmentsActivity extends AppCompatActivity {
         loadAppointments();      // reload every time the screen comes into view
     }
 
+    private int getCurrentUserId() {
+        String userEmail = getIntent().getStringExtra("email");
+        if (userEmail == null) userEmail = "test@mail.com";
+        return db.getUserIdByEmail(userEmail);
+    }
+
     private void loadAppointments() {
-        List<Appointment> list = db.getAppointmentsForUser(TEMP_USER_ID);
+        List<Appointment> list = db.getAppointmentsForUser(getCurrentUserId());
         tvEmpty.setVisibility(list.isEmpty() ? android.view.View.VISIBLE
                 : android.view.View.GONE);
         rvAppointments.setAdapter(new AppointmentAdapter(list, this::confirmCancel));
