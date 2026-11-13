@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DoctorAppointmentApp">
         <activity
-            android:name=".MainActivity"
+            android:name=".AppointmentMainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

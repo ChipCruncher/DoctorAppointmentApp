@@ -18,6 +18,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "clinic.db";
     private static final int DB_VERSION = 1;
 
+    public static final String TABLE_USERS = "users";
+
     public DatabaseHelper(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
     }
@@ -92,6 +94,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "(1, 1, '2026-10-10', '11:00', 2500, 'BOOKED'), " +
                 "(1, 1, '2026-10-10', '10:00', 2500, 'CANCELLED'), " +
                 "(1, 2, '2026-10-10', '09:30', 1500, 'BOOKED')");
+
+        // ----------------------------- ORSHAHN CREATE -------------------------------------------
+
+        db.execSQL("CREATE TABLE payments (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "doctor_name TEXT, appointment_date TEXT, amount REAL," +
+                "method TEXT, last4 TEXT, status TEXT, paid_at TEXT)"
+        );
+
+        // ----------------------------- MAGHELESH CREATE ------------------------------------------
+
+        db.execSQL("CREATE TABLE " + TABLE_USERS + " (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL, " +
+                "email TEXT UNIQUE NOT NULL, " +
+                "phone TEXT NOT NULL, " +
+                "dob TEXT, " +
+                "gender TEXT, " +
+                "password TEXT NOT NULL, " +
+                "emergency_contact TEXT)");
     }
 
     // AI-assisted (Claude)
@@ -118,6 +140,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS doctors");
         db.execSQL("DROP TABLE IF EXISTS hospitals");
         db.execSQL("DROP TABLE IF EXISTS users");
+        db.execSQL("DROP TABLE IF EXISTS payments");
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
         onCreate(db);
     }
 
@@ -246,5 +270,140 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         dumpTable("hospitals");
         dumpTable("doctors");
         dumpTable("appointments");
+    }
+
+    // -------------------------------------- MAGHELESH DATABASE ------------------------------------
+
+    private String safeTrim(String str) {
+        return str == null ? "" : str.trim().toLowerCase();
+    }
+
+    public boolean registerUser(String name, String email, String phone,
+                                String dob, String gender, String password,
+                                String emergencyContact) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put("name", name != null ? name.trim() : "");
+        values.put("email", safeTrim(email));
+        values.put("phone", phone != null ? phone.trim() : "");
+        values.put("dob", dob != null ? dob.trim() : "");
+        values.put("gender", gender != null ? gender.trim() : "");
+        values.put("password", password != null ? password : "");
+        values.put("emergency_contact", emergencyContact != null ? emergencyContact.trim() : "");
+
+        try {
+            long result = db.insertOrThrow(TABLE_USERS, null, values);
+            return result != -1;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean loginUser(String email, String password) {
+        SQLiteDatabase db = getReadableDatabase();
+
+        Cursor cursor = db.rawQuery(
+                "SELECT id FROM " + TABLE_USERS +
+                        " WHERE email = ? AND password = ?",
+                new String[]{safeTrim(email), password != null ? password : ""}
+        );
+
+        boolean exists = cursor.moveToFirst();
+        cursor.close();
+        return exists;
+    }
+
+    public Cursor getUser(String email) {
+        SQLiteDatabase db = getReadableDatabase();
+
+        return db.rawQuery(
+                "SELECT * FROM " + TABLE_USERS + " WHERE email = ?",
+                new String[]{safeTrim(email)}
+        );
+    }
+
+    public boolean emailExists(String email) {
+        Cursor cursor = getUser(email);
+        boolean exists = cursor.moveToFirst();
+        cursor.close();
+        return exists;
+    }
+
+    public boolean updateUser(String oldEmail, String name, String email,
+                              String phone, String dob, String gender,
+                              String emergencyContact) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put("name", name != null ? name.trim() : "");
+        values.put("email", safeTrim(email));
+        values.put("phone", phone != null ? phone.trim() : "");
+        values.put("dob", dob != null ? dob.trim() : "");
+        values.put("gender", gender != null ? gender.trim() : "");
+        values.put("emergency_contact", emergencyContact != null ? emergencyContact.trim() : "");
+
+        int rows = db.update(
+                TABLE_USERS,
+                values,
+                "email = ?",
+                new String[]{safeTrim(oldEmail)}
+        );
+
+        return rows > 0;
+    }
+
+    public boolean resetPassword(String email, String newPassword) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put("password", newPassword != null ? newPassword : "");
+
+        int rows = db.update(
+                TABLE_USERS,
+                values,
+                "email = ?",
+                new String[]{safeTrim(email)}
+        );
+
+        return rows > 0;
+    }
+
+
+    // ------------------------------------- ORSHAHN DATABASE ---------------------------------------
+
+    // WRITE
+    public long insertPayment(Payment p) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("doctor_name", p.doctorName);
+        cv.put("appointment_date", p.appointmentDate);
+        cv.put("amount", p.amount);
+        cv.put("method", p.method);
+        cv.put("last4", p.last4);
+        cv.put("status", p.status);
+        cv.put("paid_at", p.paidAt);
+        return db.insert("payments", null, cv);
+    }
+
+    // READ (newest first)
+    public List<Payment> getAllPayments() {
+        List<Payment> list = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT * FROM payments ORDER BY id DESC", null);
+        while (c.moveToNext()) {
+            Payment p = new Payment();
+            p.id = c.getInt(c.getColumnIndexOrThrow("id"));
+            p.doctorName = c.getString(c.getColumnIndexOrThrow("doctor_name"));
+            p.appointmentDate = c.getString(c.getColumnIndexOrThrow("appointment_date"));
+            p.amount = c.getDouble(c.getColumnIndexOrThrow("amount"));
+            p.method = c.getString(c.getColumnIndexOrThrow("method"));
+            p.last4 = c.getString(c.getColumnIndexOrThrow("last4"));
+            p.status = c.getString(c.getColumnIndexOrThrow("status"));
+            p.paidAt = c.getString(c.getColumnIndexOrThrow("paid_at"));
+            list.add(p);
+        }
+        c.close();
+        return list;
     }
 }
