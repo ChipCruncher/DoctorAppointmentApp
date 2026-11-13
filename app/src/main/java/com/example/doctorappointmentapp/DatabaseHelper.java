@@ -32,7 +32,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // Database schema and some queries created by c'est moi Oleen :>
+        // my database schema and some queries created by c'est moi Oleen [no AI] :>
+
+        // ----------------------------- MAGHELESH CREATE ------------------------------------------
+
+        db.execSQL("CREATE TABLE " + TABLE_USERS + " (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL, " +
+                "email TEXT UNIQUE NOT NULL, " +
+                "phone TEXT NOT NULL, " +
+                "dob TEXT, " +
+                "gender TEXT, " +
+                "password TEXT NOT NULL, " +
+                "emergency_contact TEXT)");
 
         db.execSQL("CREATE TABLE hospitals (" +
                 "hospital_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -65,8 +77,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "ON appointments(doctor_id, appointment_date, appointment_time) " +
                 "WHERE status = 'BOOKED'");
 
-        db.execSQL("INSERT INTO users (full_name, email, phone, password_hash) " +
-                "VALUES ('Nimal Perera', 'test@mail.com', '0771234567', 'x')");
+        db.execSQL("INSERT INTO users (name, email, phone, password, dob, gender, emergency_contact) " +
+                "VALUES ('Nimal Perera', 'test@mail.com', '0771234567', 'x', '1995-01-01', 'Male', '0770000000')");
 
         db.execSQL("INSERT INTO hospitals (name, address) VALUES " +
                 "('City General Hospital', '12 Main Street, Colombo'), " +
@@ -96,18 +108,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "doctor_name TEXT, appointment_date TEXT, amount REAL," +
                 "method TEXT, last4 TEXT, status TEXT, paid_at TEXT)"
         );
-
-        // ----------------------------- MAGHELESH CREATE ------------------------------------------
-
-        db.execSQL("CREATE TABLE " + TABLE_USERS + " (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "name TEXT NOT NULL, " +
-                "email TEXT UNIQUE NOT NULL, " +
-                "phone TEXT NOT NULL, " +
-                "dob TEXT, " +
-                "gender TEXT, " +
-                "password TEXT NOT NULL, " +
-                "emergency_contact TEXT)");
     }
 
     // AI-assisted (Claude)
